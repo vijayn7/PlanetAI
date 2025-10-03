@@ -1,32 +1,49 @@
 import { Task } from './types';
 
-const STORAGE_KEY = 'planet-tasks';
+const STORAGE_KEY_PREFIX = 'planet-tasks';
 
-export function saveTasks(tasks: Task[]): void {
+function getStorageKey(userId?: string | null): string {
+  if (userId) {
+    return `${STORAGE_KEY_PREFIX}:${userId}`;
+  }
+  return STORAGE_KEY_PREFIX;
+}
+
+export function saveTasks(tasks: Task[], userId?: string | null): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    const key = getStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify(tasks));
   } catch (error) {
     console.error('Failed to save tasks to localStorage:', error);
   }
 }
 
-export function loadTasks(): Task[] {
+export function loadTasks(userId?: string | null): Task[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const key = getStorageKey(userId);
+    const stored = localStorage.getItem(key);
     if (stored) {
       return JSON.parse(stored);
+    }
+
+    if (userId) {
+      const fallback = localStorage.getItem(STORAGE_KEY_PREFIX);
+      if (fallback) {
+        return JSON.parse(fallback);
+      }
     }
   } catch (error) {
     console.error('Failed to load tasks from localStorage:', error);
   }
-  
+
   // Return sample data if nothing stored or error occurred
   return getSampleTasks();
 }
 
-export function clearTasks(): void {
+export function clearTasks(userId?: string | null): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    const key = getStorageKey(userId);
+    localStorage.removeItem(key);
   } catch (error) {
     console.error('Failed to clear tasks from localStorage:', error);
   }

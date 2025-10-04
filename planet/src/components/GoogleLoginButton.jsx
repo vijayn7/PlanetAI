@@ -40,6 +40,7 @@ export function GoogleLoginButton({ onCredential, buttonConfig = {} }) {
         },
         ux_mode: 'popup',
         auto_select: false,
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
       });
 
       googleClient.renderButton(container, {

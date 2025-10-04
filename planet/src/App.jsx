@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { buildTaskTree, generateTaskId } from './utils';
-import { saveTasks, loadTasks } from './storage';
-import { TaskTree } from './components/TaskTree';
-import { TaskDetails } from './components/TaskDetails';
-import { ProgressDonut } from './components/ProgressDonut';
-import { GoogleLoginButton } from './components/GoogleLoginButton';
+import React, { useState, useEffect, useCallback } from 'react';
+import { GoogleCalendarAuth } from './components/GoogleCalendarAuth';
+import { CalendarView } from './components/CalendarView';
+import { EventList } from './components/EventList';
 import './App.css';
 
-const AUTH_STORAGE_KEY = 'planet-auth';
+const AUTH_STORAGE_KEY = 'planet-calendar-auth';
 
 function loadStoredAuth() {
   if (typeof window === 'undefined') {
@@ -21,7 +18,12 @@ function loadStoredAuth() {
     }
 
     const parsed = JSON.parse(stored);
-    if (parsed?.profile?.sub) {
+    if (parsed?.accessToken && parsed?.profile?.sub) {
+      // Check if token is still valid
+      if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        return null;
+      }
       return parsed;
     }
   } catch (error) {
@@ -31,72 +33,15 @@ function loadStoredAuth() {
   return null;
 }
 
-function base64UrlDecode(segment) {
-  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-  const decoder =
-    (typeof globalThis !== 'undefined' && typeof globalThis.atob === 'function')
-      ? globalThis.atob.bind(globalThis)
-      : (typeof Buffer !== 'undefined'
-        ? (value) => Buffer.from(value, 'base64').toString('binary')
-        : null);
-
-  if (!decoder) {
-    throw new Error('No base64 decoder available in this environment.');
-  }
-
-  const decoded = decoder(base64 + padding);
-
-  try {
-    return decodeURIComponent(
-      decoded
-        .split('')
-        .map(char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
-        .join('')
-    );
-  } catch (error) {
-    console.warn('Failed to decode URI component from JWT payload', error);
-    return decoded;
-  }
-}
-
-function parseGoogleCredential(credential) {
-  const segments = credential.split('.');
-  if (segments.length < 2) {
-    throw new Error('Invalid Google credential.');
-  }
-
-  const payload = base64UrlDecode(segments[1]);
-  return JSON.parse(payload);
-}
-
 function App() {
   const [authState, setAuthState] = useState(() => loadStoredAuth());
-  const [tasks, setTasks] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [expandedTasks, setExpandedTasks] = useState(new Set());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [authError, setAuthError] = useState(null);
 
   const user = authState?.profile ?? null;
-  const userId = user?.sub ?? null;
+  const accessToken = authState?.accessToken ?? null;
   const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
-
-  // Load tasks whenever the authenticated user changes
-  useEffect(() => {
-    if (!userId) {
-      setTasks([]);
-      setSelectedTask(null);
-      setExpandedTasks(new Set());
-      return;
-    }
-
-    const loadedTasks = loadTasks(userId);
-    setTasks(loadedTasks);
-
-    const rootTasks = loadedTasks.filter(task => !task.parentId);
-    setExpandedTasks(new Set(rootTasks.map(task => task.id)));
-    setSelectedTask(null);
-  }, [userId]);
 
   // Persist auth state in localStorage
   useEffect(() => {
@@ -115,172 +60,69 @@ function App() {
     }
   }, [authState]);
 
-  // Save tasks whenever they change
-  useEffect(() => {
-    if (userId) {
-      saveTasks(tasks, userId);
-    }
-  }, [tasks, userId]);
+  const handleAuthSuccess = useCallback((authData) => {
+    setAuthState(authData);
+    setAuthError(null);
+  }, []);
 
-  const handleTaskSelect = (task) => {
-    setSelectedTask(task);
-  };
-
-  const handleTaskUpdate = (taskId, updates) => {
-    setTasks(prevTasks => {
-      const newTasks = prevTasks.map(task =>
-        task.id === taskId ? { ...task, ...updates } : task
-      );
-
-      if (selectedTask?.id === taskId) {
-        setSelectedTask({ ...selectedTask, ...updates });
-      }
-
-      return newTasks;
-    });
-  };
-
-  const handleTaskMove = (taskId, newParentId, newIndex) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId
-          ? { ...task, parentId: newParentId, orderIndex: newIndex }
-          : task
-      )
-    );
-  };
-
-  const handleTaskToggle = (taskId) => {
-    setExpandedTasks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleAddChild = (parentId) => {
-    const newTask = {
-      id: generateTaskId(),
-      name: 'New Task',
-      sizeHours: 1,
-      status: 'not_started',
-      parentId,
-      orderIndex: 0,
-    };
-
-    setTasks(prev => [...prev, newTask]);
-    setSelectedTask(newTask);
-
-    if (parentId) {
-      setExpandedTasks(prev => new Set([...prev, parentId]));
-    }
-  };
-
-  const handleAddRootTask = () => {
-    const newTask = {
-      id: generateTaskId(),
-      name: 'New Root Task',
-      sizeHours: 1,
-      status: 'not_started',
-      parentId: null,
-      orderIndex: tasks.filter(t => !t.parentId).length,
-    };
-
-    setTasks(prev => [...prev, newTask]);
-    setSelectedTask(newTask);
-  };
-
-  const handleTaskDelete = (taskId) => {
-    setTasks(prev => {
-      const toRemove = new Set();
-
-      const collectDescendants = (id) => {
-        toRemove.add(id);
-        prev.filter(t => t.parentId === id).forEach(child => {
-          collectDescendants(child.id);
-        });
-      };
-
-      collectDescendants(taskId);
-
-      return prev.filter(task => !toRemove.has(task.id));
-    });
-
-    if (selectedTask?.id === taskId) {
-      setSelectedTask(null);
-    }
-  };
-
-  const handleGoogleCredential = useCallback((response) => {
-    if (!response?.credential) {
-      setAuthError('Google login did not return a credential. Please try again.');
-      return;
-    }
-
-    try {
-      const payload = parseGoogleCredential(response.credential);
-      const profile = {
-        sub: payload.sub,
-        email: payload.email,
-        name: payload.name || payload.email,
-        picture: payload.picture,
-        givenName: payload.given_name,
-        familyName: payload.family_name,
-      };
-
-      setAuthState({
-        profile,
-        credential: response.credential,
-        expiresAt: payload.exp ? payload.exp * 1000 : undefined,
-      });
-      setAuthError(null);
-    } catch (error) {
-      console.error('Failed to parse Google credential', error);
-      setAuthError('We could not verify your Google login. Please try again.');
-    }
+  const handleAuthError = useCallback((error) => {
+    console.error('Authentication error:', error);
+    setAuthError(typeof error === 'string' ? error : 'Authentication failed. Please try again.');
+    setAuthState(null);
   }, []);
 
   const handleLogout = useCallback(() => {
     setAuthState(null);
-    setTasks([]);
-    setSelectedTask(null);
-    setExpandedTasks(new Set());
+    setSelectedDate(new Date());
+    setSelectedEvent(null);
     setAuthError(null);
 
+    // Clear any Google auth state
     try {
-      const googleId = window.google?.accounts?.id;
-      if (googleId?.disableAutoSelect) {
-        googleId.disableAutoSelect();
+      const googleAuth = window.gapi?.auth2?.getAuthInstance();
+      if (googleAuth) {
+        googleAuth.signOut();
       }
     } catch (error) {
-      console.warn('Failed to disable Google auto select', error);
+      console.warn('Failed to sign out from Google', error);
     }
   }, []);
 
-  const taskTree = useMemo(() => buildTaskTree(tasks), [tasks]);
+  const handleDateSelect = useCallback((date) => {
+    setSelectedDate(date);
+    setSelectedEvent(null);
+  }, []);
+
+  const handleEventSelect = useCallback((event) => {
+    setSelectedEvent(event);
+  }, []);
+
+  const handleCreateEvent = useCallback((date) => {
+    // TODO: Open event creation modal
+    console.log('Create event for date:', date);
+  }, []);
 
   if (!user) {
     return (
       <div className="app login-screen">
         <div className="login-card">
-          <h1>🪐 Planet AI</h1>
+          <h1>🗓️ Planet AI Calendar</h1>
           <p className="login-subtitle">
-            Sign in with Google to connect your calendar and tasks.
+            Connect your Google Calendar to view and manage your events.
           </p>
           {authError && <p className="login-error">{authError}</p>}
           {hasGoogleClientId ? (
-            <GoogleLoginButton onCredential={handleGoogleCredential} />
+            <GoogleCalendarAuth 
+              onAuthSuccess={handleAuthSuccess}
+              onAuthError={handleAuthError}
+            />
           ) : (
             <p className="login-error">
-              Add <code>VITE_GOOGLE_CLIENT_ID</code> to your environment to enable Google login.
+              Add <code>VITE_GOOGLE_CLIENT_ID</code> to your environment to enable Google Calendar access.
             </p>
           )}
           <p className="login-note">
-            We use your Google identity to securely access Calendar and Tasks data.
+            We need access to your Google Calendar to display and manage your events.
           </p>
         </div>
       </div>
@@ -290,8 +132,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🪐 Planet AI - Task Manager</h1>
-        <ProgressDonut tasks={taskTree} />
+        <h1>🗓️ Planet AI Calendar</h1>
         <div className="user-profile">
           {user?.picture && (
             <img src={user.picture} alt="User avatar" className="user-avatar" />
@@ -308,31 +149,68 @@ function App() {
 
       <main className="app-main">
         <div className="app-sidebar">
-          <div className="sidebar-header">
-            <h2>Tasks</h2>
-            <button className="add-root-task" onClick={handleAddRootTask}>
-              + Add Task
-            </button>
-          </div>
-          <TaskTree
-            tasks={taskTree}
-            selectedTaskId={selectedTask?.id}
-            onTaskSelect={handleTaskSelect}
-            onTaskMove={handleTaskMove}
-            onTaskToggle={handleTaskToggle}
-            expandedTasks={expandedTasks}
+          <EventList
+            accessToken={accessToken}
+            selectedDate={selectedDate}
+            onEventSelect={handleEventSelect}
+            onCreateEvent={handleCreateEvent}
           />
         </div>
 
         <div className="app-content">
-          <TaskDetails
-            task={selectedTask}
-            onTaskUpdate={handleTaskUpdate}
-            onTaskDelete={handleTaskDelete}
-            onAddChild={handleAddChild}
+          <CalendarView
+            accessToken={accessToken}
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            onEventSelect={handleEventSelect}
           />
         </div>
       </main>
+
+      {/* Event Details Modal (if event selected) */}
+      {selectedEvent && (
+        <div className="event-modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{selectedEvent.title}</h3>
+              <button className="close-button" onClick={() => setSelectedEvent(null)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="event-detail">
+                <strong>Time:</strong> {selectedEvent.isAllDay ? 'All day' : 
+                  `${selectedEvent.start.toLocaleString()} - ${selectedEvent.end.toLocaleString()}`}
+              </div>
+              {selectedEvent.location && (
+                <div className="event-detail">
+                  <strong>Location:</strong> {selectedEvent.location}
+                </div>
+              )}
+              {selectedEvent.description && (
+                <div className="event-detail">
+                  <strong>Description:</strong> {selectedEvent.description}
+                </div>
+              )}
+              {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                <div className="event-detail">
+                  <strong>Attendees:</strong>
+                  <ul>
+                    {selectedEvent.attendees.map((attendee, index) => (
+                      <li key={index}>{attendee.email}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="modal-actions">
+                <button onClick={() => window.open(selectedEvent.htmlLink, '_blank')}>
+                  Open in Google Calendar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

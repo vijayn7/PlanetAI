@@ -1,3 +1,10 @@
-import { handlers } from "@/auth"
+import { Auth } from "@auth/core"
+import { authOptions } from "@/auth"
 
-export const { GET, POST } = handlers
+export async function GET(request: Request) {
+	return Auth(request, authOptions)
+}
+
+export async function POST(request: Request) {
+	return Auth(request, authOptions)
+}

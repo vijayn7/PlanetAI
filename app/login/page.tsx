@@ -1,4 +1,5 @@
-import { signIn } from "@/auth"
+"use client"
+import { signIn } from "next-auth/react"
 import { Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -14,15 +15,9 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-muted-foreground">Your space garden for productivity</p>
         </div>
 
-        <form
-          action={async () => {
-            "use server"
-            await signIn("google", { redirectTo: "/" })
-          }}
-          className="mt-8"
-        >
+        <div className="mt-8">
           <Button
-            type="submit"
+            onClick={() => signIn("google", { callbackUrl: "/" })}
             className="w-full h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
@@ -45,7 +40,7 @@ export default function LoginPage() {
             </svg>
             Sign in with Google
           </Button>
-        </form>
+        </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           By signing in, you agree to our Terms of Service and Privacy Policy

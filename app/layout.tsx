@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { SessionProvider } from "next-auth/react"
+import SessionProviderClient from "@/components/SessionProviderClient"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} font-sans antialiased`}>
-        <SessionProvider>{children}</SessionProvider>
+  <SessionProviderClient>{children}</SessionProviderClient>
         <Analytics />
       </body>
     </html>

@@ -1,7 +1,7 @@
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
+import type { AuthConfig } from "@auth/core"
+import Google from "@auth/core/providers/google"
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authOptions: AuthConfig = {
   providers: [
     Google({
       clientId: process.env.VITE_GOOGLE_CLIENT_ID!,
@@ -11,4 +11,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-})
+}

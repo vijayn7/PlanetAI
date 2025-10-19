@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarAPI, parseCalendarEvent, formatEventTime, formatEventDate, isEventToday } from '../services/calendarAPI';
 
-export function EventList({ accessToken, selectedDate, onEventSelect, onCreateEvent }) {
+export function EventList({ accessToken, selectedDate, onEventSelect, onCreateEvent, refreshKey }) {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [selectedDateEvents, setSelectedDateEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -12,14 +12,14 @@ export function EventList({ accessToken, selectedDate, onEventSelect, onCreateEv
   // Load upcoming events
   useEffect(() => {
     loadUpcomingEvents();
-  }, [accessToken]);
+  }, [accessToken, refreshKey]);
 
   // Load events for selected date
   useEffect(() => {
     if (selectedDate) {
       loadEventsForDate(selectedDate);
     }
-  }, [selectedDate, accessToken]);
+  }, [selectedDate, accessToken, refreshKey]);
 
   const loadUpcomingEvents = async () => {
     setLoading(true);

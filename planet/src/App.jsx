@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleCalendarAuth } from './components/GoogleCalendarAuth';
 import { CalendarView } from './components/CalendarView';
 import { EventList } from './components/EventList';
+import EventCreateModal from './components/EventCreateModal';
 import './App.css';
 
 const AUTH_STORAGE_KEY = 'planet-calendar-auth';
@@ -38,6 +39,8 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [authError, setAuthError] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const user = authState?.profile ?? null;
   const accessToken = authState?.accessToken ?? null;
@@ -98,8 +101,19 @@ function App() {
   }, []);
 
   const handleCreateEvent = useCallback((date) => {
-    // TODO: Open event creation modal
+    // Open event creation modal
     console.log('Create event for date:', date);
+    setShowCreateModal(true);
+  }, []);
+
+  const handleEventCreated = useCallback((createdEvent) => {
+    // After creating an event, we can optionally refresh UI or show feedback
+    console.log('Event created:', createdEvent);
+    // Close modal handled by modal itself via onClose
+    // Could refresh lists by forcing a state change; simplest is to reload the page
+    // but instead we'll rely on EventList to refresh via callback.
+    // Trigger data refresh for lists and calendar views
+    setRefreshKey(k => k + 1);
   }, []);
 
   if (!user) {
@@ -154,6 +168,7 @@ function App() {
             selectedDate={selectedDate}
             onEventSelect={handleEventSelect}
             onCreateEvent={handleCreateEvent}
+            refreshKey={refreshKey}
           />
         </div>
 
@@ -163,6 +178,7 @@ function App() {
             selectedDate={selectedDate}
             onDateSelect={handleDateSelect}
             onEventSelect={handleEventSelect}
+            refreshKey={refreshKey}
           />
         </div>
       </main>
@@ -210,6 +226,15 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showCreateModal && (
+        <EventCreateModal
+          accessToken={accessToken}
+          initialDate={selectedDate}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(ev) => { handleEventCreated(ev); /* trigger UI updates if needed */ }}
+        />
       )}
     </div>
   );

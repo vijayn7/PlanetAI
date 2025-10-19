@@ -7,7 +7,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export function CalendarView({ accessToken, onEventSelect, selectedDate, onDateSelect }) {
+export function CalendarView({ accessToken, onEventSelect, selectedDate, onDateSelect, refreshKey }) {
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -15,10 +15,10 @@ export function CalendarView({ accessToken, onEventSelect, selectedDate, onDateS
 
   const calendarAPI = new CalendarAPI(accessToken);
 
-  // Load events when month changes
+  // Load events when month changes or when refreshKey increments
   useEffect(() => {
     loadEvents();
-  }, [currentDate, accessToken]);
+  }, [currentDate, accessToken, refreshKey]);
 
   const loadEvents = async () => {
     setLoading(true);

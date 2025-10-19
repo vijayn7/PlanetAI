@@ -9,6 +9,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/react": "latest",
+    "@auth/core": "latest",
     "@dnd-kit/core": "latest",
     "@dnd-kit/sortable": "latest",
     "@dnd-kit/utilities": "latest",
@@ -43,6 +45,7 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "latest",
     "@vitejs/plugin-react": "latest",
+    "ai": "latest",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -59,7 +62,9 @@
     "lightningcss": "latest",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
+    "next-auth": "latest",
     "next-themes": "^0.4.6",
+    "nodemailer": "latest",
     "react": "^19",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",
@@ -75,7 +80,6 @@
     "tailwindcss-animate": "^1.0.7",
     "terser": "latest",
     "tsx": "latest",
-    "vaul": "^0.9.9",
     "vite": "latest",
     "yaml": "latest",
     "zod": "3.25.76"
@@ -89,5 +93,6 @@
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d"
 }

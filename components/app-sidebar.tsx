@@ -1,14 +1,18 @@
 "use client"
 
-import { Home, CheckSquare, Calendar, Zap, FileText, Settings, Globe } from "lucide-react"
+import { Home, CheckSquare, Calendar, Zap, FileText, Settings, Globe, MessageSquare, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { signOut } from "next-auth/react"
+import { UserProfile } from "@/components/user-profile"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Chat", href: "/chat", icon: MessageSquare },
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "Files", href: "/files", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -49,16 +53,17 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent px-4 py-3">
-          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-            U
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">User</p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">user@planet.app</p>
-          </div>
-        </div>
+      <div className="border-t border-sidebar-border p-4 space-y-3">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+        >
+          <LogOut className="h-5 w-5" />
+          Sign Out
+        </Button>
+
+        <UserProfile />
       </div>
     </div>
   )
